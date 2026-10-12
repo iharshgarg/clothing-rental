@@ -38,8 +38,8 @@ class Booking(models.Model):
     outfit = models.ForeignKey(Outfit, on_delete=models.PROTECT)
     customer_name = models.CharField(max_length=100)
     customer_phone = models.CharField(max_length=20)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
     confirmed = models.BooleanField(default=False)
     payment_status = models.CharField(
         max_length=10,
@@ -55,7 +55,7 @@ class Booking(models.Model):
     def clean(self):
         if self.start_date and self.end_date and self.end_date < self.start_date:
             raise ValidationError(
-                {"end_date": "Return date cannot be before the booking date."}
+                {"end_date": "End time cannot be before the start time."}
             )
 
         if not self.outfit_id or not self.start_date or not self.end_date:
