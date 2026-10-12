@@ -46,6 +46,7 @@ class Booking(models.Model):
         choices=PaymentStatus.choices,
         default=PaymentStatus.UNPAID,
     )
+    deposit_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     advance_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     notes = models.TextField(blank=True)
 
