@@ -23,9 +23,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-sum-$0b9fwcpxshqj%%gl0y*b+m%y9maig4bmive5f!k$u=8dl'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "clothing-rental-kappa.vercel.app",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://clothing-rental-kappa.vercel.app",
+]
 
 
 # Application definition
