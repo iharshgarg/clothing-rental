@@ -28,13 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "clothing-rental-kappa.vercel.app",
 ]
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://clothing-rental-kappa.vercel.app",
-]
-
 
 # Application definition
 
