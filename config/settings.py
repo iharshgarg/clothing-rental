@@ -29,7 +29,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".onrender.com",
-    "rental.bharatvarshai.com"
+    "rental.bharatvarshai.com",
 ]
 
 # Application definition
