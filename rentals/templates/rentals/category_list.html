@@ -1,0 +1,22 @@
+{% extends "rentals/base.html" %}
+
+{% block content %}
+  <h1 class="mb-1">Catalogue</h1>
+  <p class="text-muted mb-4">Choose a category to view available outfit designs.</p>
+
+  <div class="row g-4">
+    {% for category in categories %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <a class="text-decoration-none" href="{% url 'outfit_catalogue' category.id %}">
+          <div class="card h-100 shadow-sm border-0">
+            <div class="card-body text-center py-5">
+              <h4 class="text-dark mb-0">{{ category.name }}</h4>
+            </div>
+          </div>
+        </a>
+      </div>
+    {% empty %}
+      <p>No categories added yet. Add them through Admin.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

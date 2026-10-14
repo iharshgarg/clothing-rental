@@ -1,0 +1,55 @@
+{% extends "rentals/base.html" %}
+
+{% block content %}
+  <a href="{% url 'outfit_catalogue' category.id %}" class="text-decoration-none">
+    &larr; {{ category.name }}
+  </a>
+
+  <h1 class="mt-2">{{ model_code }}</h1>
+  <p class="text-muted">Choose dates and times to check each size.</p>
+
+  <form class="card card-body shadow-sm border-0 mb-4" method="get">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Rental starts</label>
+        <input type="datetime-local" class="form-control" name="start"
+               value="{{ selected_start|date:'Y-m-d\TH:i' }}">
+      </div>
+
+      <div class="col-md-5">
+        <label class="form-label">Rental ends</label>
+        <input type="datetime-local" class="form-control" name="end"
+               value="{{ selected_end|date:'Y-m-d\TH:i' }}">
+      </div>
+
+      <div class="col-md-2">
+        <button class="btn btn-dark w-100">Check</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-3">
+    {% for outfit in outfits %}
+      <div class="col-12 col-md-6">
+        <div class="card shadow-sm border-0">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="mb-1">Size {{ outfit.size }}</h4>
+              <span class="text-muted">₹{{ outfit.rental_price }}</span>
+            </div>
+
+            {% if selected_start and selected_end %}
+              {% if outfit.is_available %}
+                <span class="badge text-bg-success fs-6">Available</span>
+              {% else %}
+                <span class="badge text-bg-danger fs-6">Already booked</span>
+              {% endif %}
+            {% else %}
+              <span class="badge text-bg-secondary fs-6">Select dates</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}
