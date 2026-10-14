@@ -123,8 +123,8 @@ def outfit_detail(request, category_id, model_code):
 
     booked_outfit_ids = set(
         Booking.objects.filter(
-            start_date__lte=end,
-            end_date__gte=start,
+            rental__start_date__lte=end,
+            rental__end_date__gte=start,
         ).values_list("outfit_id", flat=True)
     )
 
@@ -156,8 +156,8 @@ def add_to_cart(request, outfit_id):
 
     is_booked = Booking.objects.filter(
         outfit=outfit,
-        start_date__lte=end,
-        end_date__gte=start,
+        rental__start_date__lte=end,
+        rental__end_date__gte=start,
     ).exists()
 
     if is_booked:
@@ -251,15 +251,6 @@ def complete_booking(request):
                 booking = Booking(
                     rental=rental,
                     outfit=item["outfit"],
-                    customer_name=rental.customer_name,
-                    customer_phone=rental.customer_phone,
-                    start_date=start,
-                    end_date=end,
-                    confirmed=rental.confirmed,
-                    payment_status=rental.payment_status,
-                    deposit_amount=rental.deposit_amount,
-                    advance_amount=rental.advance_amount,
-                    notes=rental.notes,
                 )
                 booking.full_clean()
                 booking.save()

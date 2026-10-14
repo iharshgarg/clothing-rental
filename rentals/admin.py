@@ -20,19 +20,8 @@ class BookingInline(admin.TabularInline):
     extra = 0
     can_delete = False
 
-    fields = [
-        "outfit",
-        "start_date",
-        "end_date",
-        "confirmed",
-    ]
-
-    readonly_fields = [
-        "outfit",
-        "start_date",
-        "end_date",
-        "confirmed",
-    ]
+    fields = ["outfit"]
+    readonly_fields = ["outfit"]
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -122,7 +111,6 @@ class RentalAdmin(admin.ModelAdmin):
     def balance_due(self, obj):
         return f"₹{obj.remaining_due:.2f}"
 
-    # Only the superuser/admin can see full bill records.
     def has_module_permission(self, request):
         return request.user.is_superuser
 
@@ -144,11 +132,9 @@ class BookingAdmin(admin.ModelAdmin):
     list_display = [
         "outfit",
         "rental_bill_number",
-        "start_date",
-        "end_date",
-        "confirmed",
+        "rental_period",
     ]
-    list_filter = ["confirmed", "start_date"]
+
     search_fields = [
         "outfit__model_code",
         "rental__bill_number",
@@ -158,15 +144,14 @@ class BookingAdmin(admin.ModelAdmin):
 
     fields = [
         "rental_bill_number",
+        "rental_period",
         "outfit",
-        "start_date",
-        "end_date",
-        "confirmed",
         "notes",
     ]
 
     readonly_fields = [
         "rental_bill_number",
+        "rental_period",
     ]
 
     @admin.display(description="Bill number", ordering="rental__bill_number")
@@ -174,3 +159,12 @@ class BookingAdmin(admin.ModelAdmin):
         if obj.rental:
             return obj.rental.bill_number
         return "No bill linked"
+
+    @admin.display(description="Rental period")
+    def rental_period(self, obj):
+        if obj.rental and obj.rental.start_date and obj.rental.end_date:
+            return (
+                f"{obj.rental.start_date:%d %b %Y, %I:%M %p} "
+                f"to {obj.rental.end_date:%d %b %Y, %I:%M %p}"
+            )
+        return "Not set"

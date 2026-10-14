@@ -90,11 +90,6 @@ class Rental(models.Model):
 
 
 class Booking(models.Model):
-    class PaymentStatus(models.TextChoices):
-        UNPAID = "unpaid", "Unpaid"
-        PARTIAL = "partial", "Partially paid"
-        PAID = "paid", "Paid"
-
     rental = models.ForeignKey(
         Rental,
         on_delete=models.CASCADE,
@@ -103,42 +98,26 @@ class Booking(models.Model):
         blank=True,
     )
     outfit = models.ForeignKey(Outfit, on_delete=models.PROTECT)
-
-    # Kept temporarily so your existing test bookings remain safe.
-    customer_name = models.CharField(max_length=100, blank=True)
-    customer_phone = models.CharField(max_length=20, blank=True)
-
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
-    confirmed = models.BooleanField(default=False)
-    payment_status = models.CharField(
-        max_length=10,
-        choices=PaymentStatus.choices,
-        default=PaymentStatus.UNPAID,
-    )
-    deposit_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    advance_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     notes = models.TextField(blank=True)
 
     def clean(self):
-        if self.start_date and self.end_date and self.end_date < self.start_date:
-            raise ValidationError(
-                {"end_date": "End time cannot be before the start time."}
-            )
+        if not self.rental_id:
+            raise ValidationError("Every outfit booking must belong to a rental/bill.")
 
-        if not self.outfit_id or not self.start_date or not self.end_date:
-            return
+        if not self.rental.start_date or not self.rental.end_date:
+            raise ValidationError("The rental must have a valid booking and return time.")
 
         overlaps = Booking.objects.filter(
             outfit=self.outfit,
-            start_date__lte=self.end_date,
-            end_date__gte=self.start_date,
+            rental__start_date__lte=self.rental.end_date,
+            rental__end_date__gte=self.rental.start_date,
         ).exclude(pk=self.pk)
 
         if overlaps.exists():
             raise ValidationError(
-                "This outfit is already booked during the selected dates and times."
+                "This outfit is already booked during the rental period."
             )
 
     def __str__(self):
-        return f"{self.outfit} ({self.start_date:%d %b %Y})"
+        bill_number = self.rental.bill_number if self.rental else "No bill"
+        return f"{self.outfit} — {bill_number}"
