@@ -40,7 +40,12 @@
 
             {% if selected_start and selected_end %}
               {% if outfit.is_available %}
-                <span class="badge text-bg-success fs-6">Available</span>
+                <form method="post" action="{% url 'add_to_cart' outfit.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="start" value="{{ selected_start|date:'Y-m-d\TH:i' }}">
+                  <input type="hidden" name="end" value="{{ selected_end|date:'Y-m-d\TH:i' }}">
+                  <button class="btn btn-success">Add to booking</button>
+                </form>
               {% else %}
                 <span class="badge text-bg-danger fs-6">Already booked</span>
               {% endif %}
