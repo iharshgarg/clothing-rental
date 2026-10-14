@@ -17,9 +17,19 @@ def is_staff_user(user):
 staff_required = user_passes_test(is_staff_user, login_url="/admin/login/")
 
 
-def get_selected_period(request):
-    start = parse_datetime(request.GET.get("start", ""))
-    end = parse_datetime(request.GET.get("end", ""))
+def get_rental_period(request):
+    period = request.session.get("rental_period", {})
+    start = parse_datetime(period.get("start", ""))
+    end = parse_datetime(period.get("end", ""))
+
+    return start, end
+
+
+@staff_required
+@require_POST
+def set_rental_period(request):
+    start = parse_datetime(request.POST.get("start", ""))
+    end = parse_datetime(request.POST.get("end", ""))
 
     if start and timezone.is_naive(start):
         start = timezone.make_aware(start)
@@ -27,40 +37,56 @@ def get_selected_period(request):
     if end and timezone.is_naive(end):
         end = timezone.make_aware(end)
 
-    return start, end
+    if not start or not end or end < start:
+        messages.error(request, "Please select a valid booking and return date/time.")
+        return redirect("category_list")
+
+    # Changing dates starts a fresh booking selection.
+    request.session["rental_period"] = {
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+    }
+    request.session["rental_cart"] = []
+
+    messages.success(request, "Rental period selected. You can now choose outfits.")
+    return redirect("category_list")
 
 
 def get_cart_items(request):
-    cart = request.session.get("rental_cart", [])
-    outfit_ids = [item["outfit_id"] for item in cart]
+    outfit_ids = request.session.get("rental_cart", [])
     outfits = Outfit.objects.in_bulk(outfit_ids)
 
-    items = []
-    for item in cart:
-        outfit = outfits.get(item["outfit_id"])
-        start = parse_datetime(item["start"])
-        end = parse_datetime(item["end"])
-
-        if outfit and start and end:
-            items.append(
-                {
-                    "outfit": outfit,
-                    "start": start,
-                    "end": end,
-                }
-            )
-
-    return items
+    return [
+        {"outfit": outfits[outfit_id]}
+        for outfit_id in outfit_ids
+        if outfit_id in outfits
+    ]
 
 
 @staff_required
 def category_list(request):
+    start, end = get_rental_period(request)
     categories = Category.objects.all().order_by("name")
-    return render(request, "rentals/category_list.html", {"categories": categories})
+
+    return render(
+        request,
+        "rentals/category_list.html",
+        {
+            "categories": categories,
+            "selected_start": start,
+            "selected_end": end,
+        },
+    )
 
 
 @staff_required
 def outfit_catalogue(request, category_id):
+    start, end = get_rental_period(request)
+
+    if not start or not end:
+        messages.error(request, "Select the rental period first.")
+        return redirect("category_list")
+
     category = get_object_or_404(Category, pk=category_id)
     outfits = Outfit.objects.filter(category=category, active=True).order_by(
         "model_code", "size"
@@ -73,12 +99,21 @@ def outfit_catalogue(request, category_id):
     return render(
         request,
         "rentals/outfit_catalogue.html",
-        {"category": category, "model_cards": model_cards.values()},
+        {
+            "category": category,
+            "model_cards": model_cards.values(),
+        },
     )
 
 
 @staff_required
 def outfit_detail(request, category_id, model_code):
+    start, end = get_rental_period(request)
+
+    if not start or not end:
+        messages.error(request, "Select the rental period first.")
+        return redirect("category_list")
+
     category = get_object_or_404(Category, pk=category_id)
     outfits = Outfit.objects.filter(
         category=category,
@@ -86,16 +121,12 @@ def outfit_detail(request, category_id, model_code):
         active=True,
     ).order_by("size")
 
-    start, end = get_selected_period(request)
-    booked_outfit_ids = set()
-
-    if start and end and end >= start:
-        booked_outfit_ids = set(
-            Booking.objects.filter(
-                start_date__lte=end,
-                end_date__gte=start,
-            ).values_list("outfit_id", flat=True)
-        )
+    booked_outfit_ids = set(
+        Booking.objects.filter(
+            start_date__lte=end,
+            end_date__gte=start,
+        ).values_list("outfit_id", flat=True)
+    )
 
     for outfit in outfits:
         outfit.is_available = outfit.id not in booked_outfit_ids
@@ -116,17 +147,11 @@ def outfit_detail(request, category_id, model_code):
 @staff_required
 @require_POST
 def add_to_cart(request, outfit_id):
+    start, end = get_rental_period(request)
     outfit = get_object_or_404(Outfit, pk=outfit_id, active=True)
-    start = parse_datetime(request.POST.get("start", ""))
-    end = parse_datetime(request.POST.get("end", ""))
 
-    if start and timezone.is_naive(start):
-        start = timezone.make_aware(start)
-    if end and timezone.is_naive(end):
-        end = timezone.make_aware(end)
-
-    if not start or not end or end < start:
-        messages.error(request, "Please select a valid start and end date/time.")
+    if not start or not end:
+        messages.error(request, "Select the rental period first.")
         return redirect("category_list")
 
     is_booked = Booking.objects.filter(
@@ -136,27 +161,36 @@ def add_to_cart(request, outfit_id):
     ).exists()
 
     if is_booked:
-        messages.error(request, f"{outfit} is no longer available for that period.")
+        messages.error(request, f"{outfit} is no longer available.")
         return redirect("category_list")
 
     cart = request.session.get("rental_cart", [])
-    cart = [item for item in cart if item["outfit_id"] != outfit.id]
-    cart.append(
-        {
-            "outfit_id": outfit.id,
-            "start": start.isoformat(),
-            "end": end.isoformat(),
-        }
-    )
-    request.session["rental_cart"] = cart
 
-    messages.success(request, f"{outfit} added to the booking.")
+    if outfit.id not in cart:
+        cart.append(outfit.id)
+        request.session["rental_cart"] = cart
+        messages.success(request, f"{outfit} added to the booking.")
+
     return redirect("cart")
 
 
 @staff_required
 def cart_view(request):
-    return render(request, "rentals/cart.html", {"items": get_cart_items(request)})
+    start, end = get_rental_period(request)
+
+    if not start or not end:
+        messages.error(request, "Select the rental period first.")
+        return redirect("category_list")
+
+    return render(
+        request,
+        "rentals/cart.html",
+        {
+            "items": get_cart_items(request),
+            "selected_start": start,
+            "selected_end": end,
+        },
+    )
 
 
 @staff_required
@@ -174,9 +208,15 @@ def remove_from_cart(request, item_index):
 @staff_required
 @require_POST
 def complete_booking(request):
+    start, end = get_rental_period(request)
     items = get_cart_items(request)
+
     customer_name = request.POST.get("customer_name", "").strip()
     customer_phone = request.POST.get("customer_phone", "").strip()
+
+    if not start or not end:
+        messages.error(request, "Select the rental period first.")
+        return redirect("category_list")
 
     if not items:
         messages.error(request, "Add at least one outfit before creating a booking.")
@@ -188,6 +228,7 @@ def complete_booking(request):
 
     valid_statuses = {value for value, _ in Rental.PaymentStatus.choices}
     payment_status = request.POST.get("payment_status", "unpaid")
+
     if payment_status not in valid_statuses:
         payment_status = "unpaid"
 
@@ -196,6 +237,8 @@ def complete_booking(request):
             rental = Rental.objects.create(
                 customer_name=customer_name,
                 customer_phone=customer_phone,
+                start_date=start,
+                end_date=end,
                 deposit_amount=request.POST.get("deposit_amount") or 0,
                 advance_amount=request.POST.get("advance_amount") or 0,
                 payment_status=payment_status,
@@ -210,8 +253,8 @@ def complete_booking(request):
                     outfit=item["outfit"],
                     customer_name=rental.customer_name,
                     customer_phone=rental.customer_phone,
-                    start_date=item["start"],
-                    end_date=item["end"],
+                    start_date=start,
+                    end_date=end,
                     confirmed=rental.confirmed,
                     payment_status=rental.payment_status,
                     deposit_amount=rental.deposit_amount,
@@ -226,5 +269,7 @@ def complete_booking(request):
         return redirect("cart")
 
     request.session["rental_cart"] = []
+    request.session.pop("rental_period", None)
+
     messages.success(request, "Booking created successfully.")
     return redirect("category_list")

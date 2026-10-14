@@ -5,28 +5,20 @@
     &larr; {{ category.name }}
   </a>
 
-  <h1 class="mt-2">{{ model_code }}</h1>
-  <p class="text-muted">Choose dates and times to check each size.</p>
-
-  <form class="card card-body shadow-sm border-0 mb-4" method="get">
-    <div class="row g-3 align-items-end">
-      <div class="col-md-5">
-        <label class="form-label">Rental starts</label>
-        <input type="datetime-local" class="form-control" name="start"
-               value="{{ selected_start|date:'Y-m-d\TH:i' }}">
-      </div>
-
-      <div class="col-md-5">
-        <label class="form-label">Rental ends</label>
-        <input type="datetime-local" class="form-control" name="end"
-               value="{{ selected_end|date:'Y-m-d\TH:i' }}">
-      </div>
-
-      <div class="col-md-2">
-        <button class="btn btn-dark w-100">Check</button>
-      </div>
+  <div class="d-flex justify-content-between align-items-start mt-2 mb-4">
+    <div>
+      <h1 class="mb-1">{{ model_code }}</h1>
+      <p class="text-muted mb-0">
+        {{ selected_start|date:"d M Y, h:i A" }}
+        to
+        {{ selected_end|date:"d M Y, h:i A" }}
+      </p>
     </div>
-  </form>
+
+    <a class="btn btn-outline-dark btn-sm" href="{% url 'category_list' %}">
+      Change dates
+    </a>
+  </div>
 
   <div class="row g-3">
     {% for outfit in outfits %}
@@ -38,19 +30,13 @@
               <span class="text-muted">₹{{ outfit.rental_price }}</span>
             </div>
 
-            {% if selected_start and selected_end %}
-              {% if outfit.is_available %}
-                <form method="post" action="{% url 'add_to_cart' outfit.id %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="start" value="{{ selected_start|date:'Y-m-d\TH:i' }}">
-                  <input type="hidden" name="end" value="{{ selected_end|date:'Y-m-d\TH:i' }}">
-                  <button class="btn btn-success">Add to booking</button>
-                </form>
-              {% else %}
-                <span class="badge text-bg-danger fs-6">Already booked</span>
-              {% endif %}
+            {% if outfit.is_available %}
+              <form method="post" action="{% url 'add_to_cart' outfit.id %}">
+                {% csrf_token %}
+                <button class="btn btn-success">Add to booking</button>
+              </form>
             {% else %}
-              <span class="badge text-bg-secondary fs-6">Select dates</span>
+              <span class="badge text-bg-danger fs-6">Already booked</span>
             {% endif %}
           </div>
         </div>

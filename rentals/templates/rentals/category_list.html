@@ -1,22 +1,49 @@
 {% extends "rentals/base.html" %}
 
 {% block content %}
-  <h1 class="mb-1">Catalogue</h1>
-  <p class="text-muted mb-4">Choose a category to view available outfit designs.</p>
+  <h1 class="mb-1">New rental</h1>
+  <p class="text-muted mb-4">
+    First choose one booking and return period for all outfits in this bill.
+  </p>
 
-  <div class="row g-4">
-    {% for category in categories %}
-      <div class="col-6 col-md-4 col-lg-3">
-        <a class="text-decoration-none" href="{% url 'outfit_catalogue' category.id %}">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body text-center py-5">
-              <h4 class="text-dark mb-0">{{ category.name }}</h4>
-            </div>
-          </div>
-        </a>
+  <form method="post" action="{% url 'set_rental_period' %}"
+        class="card card-body shadow-sm border-0 mb-5">
+    {% csrf_token %}
+
+    <div class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Booking starts</label>
+        <input type="datetime-local" class="form-control" name="start"
+               value="{{ selected_start|date:'Y-m-d\TH:i' }}" required>
       </div>
-    {% empty %}
-      <p>No categories added yet. Add them through Admin.</p>
-    {% endfor %}
-  </div>
+
+      <div class="col-md-5">
+        <label class="form-label">Return by</label>
+        <input type="datetime-local" class="form-control" name="end"
+               value="{{ selected_end|date:'Y-m-d\TH:i' }}" required>
+      </div>
+
+      <div class="col-md-2">
+        <button class="btn btn-dark w-100">Continue</button>
+      </div>
+    </div>
+  </form>
+
+  {% if selected_start and selected_end %}
+    <h2 class="h4 mb-3">Choose a category</h2>
+
+    <div class="row g-4">
+      {% for category in categories %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <a class="text-decoration-none" href="{% url 'outfit_catalogue' category.id %}">
+            <div class="card h-100 shadow-sm border-0">
+              <div class="card-body text-center py-5">
+                <h4 class="text-dark mb-0">{{ category.name }}</h4>
+              </div>
+            </div>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
 {% endblock %}
