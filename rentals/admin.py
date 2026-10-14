@@ -1,4 +1,8 @@
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404
+from django.template.response import TemplateResponse
+from django.urls import path
 
 from .models import Booking, Category, Outfit, Rental
 
@@ -20,8 +24,21 @@ class BookingInline(admin.TabularInline):
     extra = 0
     can_delete = False
 
-    fields = ["outfit"]
-    readonly_fields = ["outfit"]
+    fields = [
+        "outfit",
+        "outfit_price",
+    ]
+
+    readonly_fields = [
+        "outfit",
+        "outfit_price",
+    ]
+
+    @admin.display(description="Rental price")
+    def outfit_price(self, obj):
+        if not obj or not obj.outfit_id:
+            return "-"
+        return f"₹{obj.outfit.rental_price:.2f}"
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -29,6 +46,8 @@ class BookingInline(admin.TabularInline):
 
 @admin.register(Rental)
 class RentalAdmin(admin.ModelAdmin):
+    change_form_template = "admin/rentals/rental/change_form.html"
+
     list_display = [
         "bill_number",
         "customer_name",
@@ -111,6 +130,35 @@ class RentalAdmin(admin.ModelAdmin):
     def balance_due(self, obj):
         return f"₹{obj.remaining_due:.2f}"
 
+    def get_urls(self):
+        custom_urls = [
+            path(
+                "<int:rental_id>/print/",
+                self.admin_site.admin_view(self.print_bill),
+                name="rentals_rental_print",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def print_bill(self, request, rental_id):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+
+        rental = get_object_or_404(Rental, pk=rental_id)
+        bookings = rental.bookings.select_related("outfit").all()
+
+        context = {
+            **self.admin_site.each_context(request),
+            "rental": rental,
+            "bookings": bookings,
+        }
+
+        return TemplateResponse(
+            request,
+            "admin/rentals/rental/print_bill.html",
+            context,
+        )
+
     def has_module_permission(self, request):
         return request.user.is_superuser
 
@@ -156,9 +204,7 @@ class BookingAdmin(admin.ModelAdmin):
 
     @admin.display(description="Bill number", ordering="rental__bill_number")
     def rental_bill_number(self, obj):
-        if obj.rental:
-            return obj.rental.bill_number
-        return "No bill linked"
+        return obj.rental.bill_number if obj.rental else "No bill linked"
 
     @admin.display(description="Rental period")
     def rental_period(self, obj):

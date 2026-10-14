@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ rental.bill_number }}</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #1f2937;
+      margin: 40px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 18px;
+      margin-bottom: 28px;
+    }
+
+    h1, h2, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    .muted {
+      color: #6b7280;
+      margin-top: 6px;
+    }
+
+    .details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .box {
+      background: #f9fafb;
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .box p {
+      margin-top: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #d1d5db;
+      text-align: left;
+    }
+
+    th:last-child, td:last-child {
+      text-align: right;
+    }
+
+    .summary {
+      width: 320px;
+      margin-left: auto;
+      margin-top: 24px;
+    }
+
+    .summary div {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+    }
+
+    .summary .total {
+      font-size: 18px;
+      font-weight: bold;
+      border-top: 2px solid #111827;
+      margin-top: 8px;
+      padding-top: 12px;
+    }
+
+    @media print {
+      body {
+        margin: 20px;
+      }
+
+      .print-button {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <button class="print-button" onclick="window.print()">Print / Save as PDF</button>
+
+  <div class="header">
+    <div>
+      <h1>Rental Bill</h1>
+      <p class="muted">Bill no: {{ rental.bill_number }}</p>
+    </div>
+
+    <div>
+      <strong>Date:</strong> {{ rental.created_at|date:"d M Y" }}<br>
+      <strong>Status:</strong> {{ rental.payment_status|title }}
+    </div>
+  </div>
+
+  <div class="details">
+    <div class="box">
+      <strong>Customer details</strong>
+      <p>{{ rental.customer_name }}</p>
+      <p>{{ rental.customer_phone }}</p>
+    </div>
+
+    <div class="box">
+      <strong>Rental period</strong>
+      <p>{{ rental.start_date|date:"d M Y, h:i A" }}</p>
+      <p>to {{ rental.end_date|date:"d M Y, h:i A" }}</p>
+    </div>
+  </div>
+
+  <h2>Rented outfits</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Outfit</th>
+        <th>Size</th>
+        <th>Rental price</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for booking in bookings %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ booking.outfit.model_code }}</td>
+          <td>{{ booking.outfit.size }}</td>
+          <td>₹{{ booking.outfit.rental_price }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="summary">
+    <div>
+      <span>Outfit total</span>
+      <strong>₹{{ rental.total_amount }}</strong>
+    </div>
+
+    <div>
+      <span>Deposit</span>
+      <strong>₹{{ rental.deposit_amount }}</strong>
+    </div>
+
+    <div>
+      <span>Advance paid</span>
+      <strong>₹{{ rental.advance_amount }}</strong>
+    </div>
+
+    <div class="total">
+      <span>Remaining due</span>
+      <span>₹{{ rental.remaining_due }}</span>
+    </div>
+  </div>
+
+  {% if rental.notes %}
+    <div class="box" style="margin-top: 32px;">
+      <strong>Notes</strong>
+      <p>{{ rental.notes }}</p>
+    </div>
+  {% endif %}
+</body>
+</html>

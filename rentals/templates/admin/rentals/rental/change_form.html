@@ -1,0 +1,33 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+  {{ block.super }}
+
+  {% if original %}
+    <li>
+      <a href="{% url 'admin:rentals_rental_print' original.pk %}" target="_blank">
+        Print bill
+      </a>
+    </li>
+  {% endif %}
+{% endblock %}
+
+{% block field_sets %}
+  {% for fieldset in adminform %}
+    {% if forloop.counter <= 3 %}
+      {% include "admin/includes/fieldset.html" %}
+    {% endif %}
+  {% endfor %}
+{% endblock %}
+
+{% block inline_field_sets %}
+  {% for inline_admin_formset in inline_admin_formsets %}
+    {% include inline_admin_formset.opts.template %}
+  {% endfor %}
+
+  {% for fieldset in adminform %}
+    {% if forloop.counter > 3 %}
+      {% include "admin/includes/fieldset.html" %}
+    {% endif %}
+  {% endfor %}
+{% endblock %}

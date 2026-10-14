@@ -119,5 +119,4 @@ class Booking(models.Model):
             )
 
     def __str__(self):
-        bill_number = self.rental.bill_number if self.rental else "No bill"
-        return f"{self.outfit} — {bill_number}"
+        return str(self.outfit)
