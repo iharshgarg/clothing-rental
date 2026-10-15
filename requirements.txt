@@ -1,5 +1,12 @@
 asgiref==3.12.1
+certifi==2026.7.22
+cloudinary==1.46.3
 Django==6.1.2
 gunicorn==26.2.0
 pillow==12.3.0
+psycopg==3.3.6
+psycopg-binary==3.3.6
+python-dotenv==1.2.4
+six==1.17.0
 sqlparse==0.6.0
+urllib3==2.8.0

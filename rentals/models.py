@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from cloudinary.models import CloudinaryField
 
 
 class Category(models.Model):
@@ -17,7 +18,13 @@ class Outfit(models.Model):
     model_code = models.CharField(max_length=50)
     size = models.CharField(max_length=10)
     rental_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    photo = models.ImageField(upload_to="outfit_photos/", blank=True, null=True)
+    photo = CloudinaryField(
+        "outfit photo",
+        asset_folder="outfit_photos",
+        use_asset_folder_as_public_id_prefix=True,
+        blank=True,
+        null=True,
+    )
     active = models.BooleanField(default=True)
 
     class Meta:

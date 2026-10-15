@@ -10,10 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
+from dotenv import load_dotenv
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -41,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'cloudinary',
     'rentals',
 ]
 
@@ -78,9 +82,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["PGDATABASE"],
+        "USER": os.environ["PGUSER"],
+        "PASSWORD": os.environ["PGPASSWORD"],
+        "HOST": os.environ["PGHOST"],
+        "PORT": os.environ.get("PGPORT", "5432"),
+        "OPTIONS": {
+            "sslmode": "require",
+        },
+        "CONN_MAX_AGE": 60,
     }
 }
 
@@ -130,6 +142,3 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
