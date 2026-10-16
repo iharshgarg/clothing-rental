@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path
 
-from .models import Booking, Category, Outfit, Rental
+from .models import Booking, Category, Outfit, OutfitSize, Rental
 
 
 @admin.register(Category)
@@ -12,11 +12,18 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ["name"]
 
 
+class OutfitSizeInline(admin.TabularInline):
+    model = OutfitSize
+    extra = 1
+    fields = ["size", "active"]
+
+
 @admin.register(Outfit)
 class OutfitAdmin(admin.ModelAdmin):
-    list_display = ["model_code", "category", "size", "rental_price", "active"]
-    list_filter = ["category", "size", "active"]
+    list_display = ["model_code", "category", "rental_price", "active"]
+    list_filter = ["category", "active"]
     search_fields = ["model_code"]
+    inlines = [OutfitSizeInline]
 
 
 class BookingInline(admin.TabularInline):
@@ -24,21 +31,14 @@ class BookingInline(admin.TabularInline):
     extra = 0
     can_delete = False
 
-    fields = [
-        "outfit",
-        "outfit_price",
-    ]
-
-    readonly_fields = [
-        "outfit",
-        "outfit_price",
-    ]
+    fields = ["outfit_size", "outfit_price"]
+    readonly_fields = ["outfit_size", "outfit_price"]
 
     @admin.display(description="Rental price")
     def outfit_price(self, obj):
-        if not obj or not obj.outfit_id:
+        if not obj or not obj.outfit_size_id:
             return "-"
-        return f"₹{obj.outfit.rental_price:.2f}"
+        return f"₹{obj.outfit_size.outfit.rental_price:.2f}"
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -145,18 +145,16 @@ class RentalAdmin(admin.ModelAdmin):
             raise PermissionDenied
 
         rental = get_object_or_404(Rental, pk=rental_id)
-        bookings = rental.bookings.select_related("outfit").all()
-
-        context = {
-            **self.admin_site.each_context(request),
-            "rental": rental,
-            "bookings": bookings,
-        }
+        bookings = rental.bookings.select_related("outfit_size__outfit").all()
 
         return TemplateResponse(
             request,
             "admin/rentals/rental/print_bill.html",
-            context,
+            {
+                **self.admin_site.each_context(request),
+                "rental": rental,
+                "bookings": bookings,
+            },
         )
 
     def has_module_permission(self, request):
@@ -178,13 +176,13 @@ class RentalAdmin(admin.ModelAdmin):
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
     list_display = [
-        "outfit",
+        "outfit_size",
         "rental_bill_number",
         "rental_period",
     ]
 
     search_fields = [
-        "outfit__model_code",
+        "outfit_size__outfit__model_code",
         "rental__bill_number",
         "rental__customer_name",
         "rental__customer_phone",
@@ -193,7 +191,7 @@ class BookingAdmin(admin.ModelAdmin):
     fields = [
         "rental_bill_number",
         "rental_period",
-        "outfit",
+        "outfit_size",
         "notes",
     ]
 
@@ -204,13 +202,11 @@ class BookingAdmin(admin.ModelAdmin):
 
     @admin.display(description="Bill number", ordering="rental__bill_number")
     def rental_bill_number(self, obj):
-        return obj.rental.bill_number if obj.rental else "No bill linked"
+        return obj.rental.bill_number
 
     @admin.display(description="Rental period")
     def rental_period(self, obj):
-        if obj.rental and obj.rental.start_date and obj.rental.end_date:
-            return (
-                f"{obj.rental.start_date:%d %b %Y, %I:%M %p} "
-                f"to {obj.rental.end_date:%d %b %Y, %I:%M %p}"
-            )
-        return "Not set"
+        return (
+            f"{obj.rental.start_date:%d %b %Y, %I:%M %p} "
+            f"to {obj.rental.end_date:%d %b %Y, %I:%M %p}"
+        )

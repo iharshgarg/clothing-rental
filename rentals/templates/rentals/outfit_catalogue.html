@@ -1,14 +1,17 @@
 {% extends "rentals/base.html" %}
 
 {% block content %}
-  <a href="{% url 'category_list' %}" class="text-decoration-none">&larr; All categories</a>
+  <a href="{% url 'category_list' %}" class="text-decoration-none">
+    &larr; All categories
+  </a>
+
   <h1 class="mt-2 mb-4">{{ category.name }}</h1>
 
   <div class="row g-4">
-    {% for outfit in model_cards %}
+    {% for outfit in outfits %}
       <div class="col-6 col-md-4 col-lg-3">
         <a class="text-decoration-none"
-           href="{% url 'outfit_detail' category.id outfit.model_code %}">
+           href="{% url 'outfit_detail' category.id outfit.id %}">
           <div class="card h-100 shadow-sm border-0">
             {% if outfit.photo %}
               <img src="{{ outfit.photo.url }}"
@@ -24,7 +27,7 @@
 
             <div class="card-body">
               <h5 class="text-dark mb-1">{{ outfit.model_code }}</h5>
-              <p class="text-muted mb-0">From ₹{{ outfit.rental_price }}</p>
+              <p class="text-muted mb-0">Rental price: ₹{{ outfit.rental_price }}</p>
             </div>
           </div>
         </a>

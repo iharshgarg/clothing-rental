@@ -142,9 +142,9 @@
       {% for booking in bookings %}
         <tr>
           <td>{{ forloop.counter }}</td>
-          <td>{{ booking.outfit.model_code }}</td>
-          <td>{{ booking.outfit.size }}</td>
-          <td>₹{{ booking.outfit.rental_price }}</td>
+          <td>{{ booking.outfit_size.outfit.model_code }}</td>
+          <td>{{ booking.outfit_size.size }}</td>
+          <td>₹{{ booking.outfit_size.outfit.rental_price }}</td>
         </tr>
       {% endfor %}
     </tbody>

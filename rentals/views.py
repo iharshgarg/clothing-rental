@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 
-from .models import Booking, Category, Outfit, Rental
+from .models import Booking, Category, Outfit, OutfitSize, Rental
 
 
 def is_staff_user(user):
@@ -41,7 +41,6 @@ def set_rental_period(request):
         messages.error(request, "Please select a valid booking and return date/time.")
         return redirect("category_list")
 
-    # Changing dates starts a fresh booking selection.
     request.session["rental_period"] = {
         "start": start.isoformat(),
         "end": end.isoformat(),
@@ -53,13 +52,14 @@ def set_rental_period(request):
 
 
 def get_cart_items(request):
-    outfit_ids = request.session.get("rental_cart", [])
-    outfits = Outfit.objects.in_bulk(outfit_ids)
+    size_ids = request.session.get("rental_cart", [])
+
+    outfit_sizes = OutfitSize.objects.select_related("outfit").in_bulk(size_ids)
 
     return [
-        {"outfit": outfits[outfit_id]}
-        for outfit_id in outfit_ids
-        if outfit_id in outfits
+        {"outfit_size": outfit_sizes[size_id]}
+        for size_id in size_ids
+        if size_id in outfit_sizes
     ]
 
 
@@ -88,26 +88,23 @@ def outfit_catalogue(request, category_id):
         return redirect("category_list")
 
     category = get_object_or_404(Category, pk=category_id)
-    outfits = Outfit.objects.filter(category=category, active=True).order_by(
-        "model_code", "size"
-    )
-
-    model_cards = {}
-    for outfit in outfits:
-        model_cards.setdefault(outfit.model_code, outfit)
+    outfits = Outfit.objects.filter(
+        category=category,
+        active=True,
+    ).order_by("model_code")
 
     return render(
         request,
         "rentals/outfit_catalogue.html",
         {
             "category": category,
-            "model_cards": model_cards.values(),
+            "outfits": outfits,
         },
     )
 
 
 @staff_required
-def outfit_detail(request, category_id, model_code):
+def outfit_detail(request, category_id, outfit_id):
     start, end = get_rental_period(request)
 
     if not start or not end:
@@ -115,29 +112,33 @@ def outfit_detail(request, category_id, model_code):
         return redirect("category_list")
 
     category = get_object_or_404(Category, pk=category_id)
-    outfits = Outfit.objects.filter(
+    outfit = get_object_or_404(
+        Outfit,
+        pk=outfit_id,
         category=category,
-        model_code=model_code,
         active=True,
-    ).order_by("size")
-
-    booked_outfit_ids = set(
-        Booking.objects.filter(
-            rental__start_date__lte=end,
-            rental__end_date__gte=start,
-        ).values_list("outfit_id", flat=True)
     )
 
-    for outfit in outfits:
-        outfit.is_available = outfit.id not in booked_outfit_ids
+    sizes = outfit.sizes.filter(active=True).order_by("size")
+
+    booked_size_ids = set(
+        Booking.objects.filter(
+            outfit_size__in=sizes,
+            rental__start_date__lte=end,
+            rental__end_date__gte=start,
+        ).values_list("outfit_size_id", flat=True)
+    )
+
+    for outfit_size in sizes:
+        outfit_size.is_available = outfit_size.id not in booked_size_ids
 
     return render(
         request,
         "rentals/outfit_detail.html",
         {
             "category": category,
-            "model_code": model_code,
-            "outfits": outfits,
+            "outfit": outfit,
+            "sizes": sizes,
             "selected_start": start,
             "selected_end": end,
         },
@@ -146,30 +147,36 @@ def outfit_detail(request, category_id, model_code):
 
 @staff_required
 @require_POST
-def add_to_cart(request, outfit_id):
+def add_to_cart(request, size_id):
     start, end = get_rental_period(request)
-    outfit = get_object_or_404(Outfit, pk=outfit_id, active=True)
+
+    outfit_size = get_object_or_404(
+        OutfitSize.objects.select_related("outfit"),
+        pk=size_id,
+        active=True,
+        outfit__active=True,
+    )
 
     if not start or not end:
         messages.error(request, "Select the rental period first.")
         return redirect("category_list")
 
     is_booked = Booking.objects.filter(
-        outfit=outfit,
+        outfit_size=outfit_size,
         rental__start_date__lte=end,
         rental__end_date__gte=start,
     ).exists()
 
     if is_booked:
-        messages.error(request, f"{outfit} is no longer available.")
+        messages.error(request, f"{outfit_size} is no longer available.")
         return redirect("category_list")
 
     cart = request.session.get("rental_cart", [])
 
-    if outfit.id not in cart:
-        cart.append(outfit.id)
+    if outfit_size.id not in cart:
+        cart.append(outfit_size.id)
         request.session["rental_cart"] = cart
-        messages.success(request, f"{outfit} added to the booking.")
+        messages.success(request, f"{outfit_size} added to the booking.")
 
     return redirect("cart")
 
@@ -250,7 +257,7 @@ def complete_booking(request):
             for item in items:
                 booking = Booking(
                     rental=rental,
-                    outfit=item["outfit"],
+                    outfit_size=item["outfit_size"],
                 )
                 booking.full_clean()
                 booking.save()

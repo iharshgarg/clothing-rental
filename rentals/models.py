@@ -1,9 +1,9 @@
 from decimal import Decimal
 
+from cloudinary.models import CloudinaryField
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from cloudinary.models import CloudinaryField
 
 
 class Category(models.Model):
@@ -15,8 +15,7 @@ class Category(models.Model):
 
 class Outfit(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    model_code = models.CharField(max_length=50)
-    size = models.CharField(max_length=10)
+    model_code = models.CharField(max_length=50, unique=True)
     rental_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     photo = CloudinaryField(
         "outfit photo",
@@ -27,16 +26,29 @@ class Outfit(models.Model):
     )
     active = models.BooleanField(default=True)
 
+    def __str__(self):
+        return self.model_code
+
+
+class OutfitSize(models.Model):
+    outfit = models.ForeignKey(
+        Outfit,
+        on_delete=models.CASCADE,
+        related_name="sizes",
+    )
+    size = models.CharField(max_length=10)
+    active = models.BooleanField(default=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["model_code", "size"],
-                name="unique_outfit_model_and_size",
+                fields=["outfit", "size"],
+                name="unique_outfit_and_size",
             )
         ]
 
     def __str__(self):
-        return f"{self.model_code} — Size {self.size}"
+        return f"{self.outfit.model_code} — Size {self.size}"
 
 
 class Rental(models.Model):
@@ -54,8 +66,11 @@ class Rental(models.Model):
     )
     customer_name = models.CharField(max_length=100)
     customer_phone = models.CharField(max_length=20)
+
+    # Temporarily nullable to preserve old test records during this refactor.
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
+
     deposit_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     advance_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     payment_status = models.CharField(
@@ -84,7 +99,12 @@ class Rental(models.Model):
     @property
     def total_amount(self):
         return sum(
-            (booking.outfit.rental_price for booking in self.bookings.select_related("outfit")),
+            (
+                booking.outfit_size.outfit.rental_price
+                for booking in self.bookings.select_related(
+                    "outfit_size__outfit"
+                ).exclude(outfit_size__isnull=True)
+            ),
             Decimal("0"),
         )
 
@@ -97,6 +117,7 @@ class Rental(models.Model):
 
 
 class Booking(models.Model):
+    # Temporarily nullable to preserve old test records during this refactor.
     rental = models.ForeignKey(
         Rental,
         on_delete=models.CASCADE,
@@ -104,26 +125,36 @@ class Booking(models.Model):
         null=True,
         blank=True,
     )
-    outfit = models.ForeignKey(Outfit, on_delete=models.PROTECT)
+
+    outfit_size = models.ForeignKey(
+        OutfitSize,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+
     notes = models.TextField(blank=True)
 
     def clean(self):
         if not self.rental_id:
-            raise ValidationError("Every outfit booking must belong to a rental/bill.")
+            raise ValidationError("A booking must belong to a rental/bill.")
+
+        if not self.outfit_size_id:
+            raise ValidationError("A booking must have an outfit size.")
 
         if not self.rental.start_date or not self.rental.end_date:
-            raise ValidationError("The rental must have a valid booking and return time.")
+            raise ValidationError("The rental must have a valid rental period.")
 
         overlaps = Booking.objects.filter(
-            outfit=self.outfit,
+            outfit_size=self.outfit_size,
             rental__start_date__lte=self.rental.end_date,
             rental__end_date__gte=self.rental.start_date,
         ).exclude(pk=self.pk)
 
         if overlaps.exists():
             raise ValidationError(
-                "This outfit is already booked during the rental period."
+                "This outfit size is already booked during the rental period."
             )
 
     def __str__(self):
-        return str(self.outfit)
+        return str(self.outfit_size) if self.outfit_size else "No outfit size"
