@@ -5,7 +5,7 @@
     &larr; {{ category.name }}
   </a>
 
-  <div class="d-flex justify-content-between align-items-start mt-2 mb-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start mt-2 mb-4">
     <div>
       <h1 class="mb-1">{{ outfit.model_code }}</h1>
       <p class="text-muted mb-0">
@@ -15,43 +15,67 @@
       </p>
     </div>
 
-    <a class="btn btn-outline-dark btn-sm" href="{% url 'category_list' %}">
+    <a class="btn btn-outline-dark btn-sm mt-3 mt-md-0"
+       href="{% url 'category_list' %}">
       Change dates
     </a>
   </div>
 
-  {% if outfit.photo %}
-    <img src="{{ outfit.photo.url }}"
-         alt="{{ outfit.model_code }}"
-         class="img-fluid rounded shadow-sm mb-4"
-         style="max-height: 450px; object-fit: cover;">
-  {% endif %}
-
-  <h3 class="mb-3">Select size</h3>
-
-  <div class="row g-3">
-    {% for outfit_size in sizes %}
-      <div class="col-12 col-md-6">
+  <div class="row g-4 align-items-start">
+    <div class="col-lg-7">
+      {% if outfit.photo %}
         <div class="card shadow-sm border-0">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h4 class="mb-1">Size {{ outfit_size.size }}</h4>
-              <span class="text-muted">₹{{ outfit.rental_price }}</span>
-            </div>
+          <img src="{{ outfit.photo.url }}"
+               alt="{{ outfit.model_code }}"
+               class="img-fluid rounded"
+               style="width: 100%; max-height: 620px; object-fit: contain; background: #f8f9fa;">
+        </div>
+      {% else %}
+        <div class="bg-secondary-subtle rounded d-flex align-items-center justify-content-center"
+             style="height: 500px;">
+          <span class="text-muted">No photo available</span>
+        </div>
+      {% endif %}
+    </div>
 
-            {% if outfit_size.is_available %}
-              <form method="post" action="{% url 'add_to_cart' outfit_size.id %}">
-                {% csrf_token %}
-                <button class="btn btn-success">Add to booking</button>
-              </form>
-            {% else %}
-              <span class="badge text-bg-danger fs-6">Already booked</span>
-            {% endif %}
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 sticky-lg-top" style="top: 1rem;">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+              <h3 class="mb-1">Select size</h3>
+              <p class="text-muted mb-0">
+                Rental price: ₹{{ outfit.rental_price }}
+              </p>
+            </div>
+          </div>
+
+          <div class="d-grid gap-3">
+            {% for outfit_size in sizes %}
+              <div class="border rounded p-3 d-flex justify-content-between align-items-center">
+                <strong class="fs-5">Size {{ outfit_size.size }}</strong>
+
+                {% if outfit_size.is_available %}
+                  <form method="post" action="{% url 'add_to_cart' outfit_size.id %}">
+                    {% csrf_token %}
+                    <button class="btn btn-success">
+                      Add to booking
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="badge text-bg-danger fs-6">
+                    Already booked
+                  </span>
+                {% endif %}
+              </div>
+            {% empty %}
+              <div class="alert alert-secondary mb-0">
+                No sizes have been added for this outfit yet.
+              </div>
+            {% endfor %}
           </div>
         </div>
       </div>
-    {% empty %}
-      <p>No sizes have been added for this outfit yet.</p>
-    {% endfor %}
+    </div>
   </div>
 {% endblock %}
