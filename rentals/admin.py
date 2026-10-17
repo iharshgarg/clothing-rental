@@ -67,6 +67,7 @@ class RentalAdmin(admin.ModelAdmin):
         "created_at",
         "created_by",
         "outfit_total",
+        "net_total",
         "balance_due",
     ]
 
@@ -106,8 +107,10 @@ class RentalAdmin(admin.ModelAdmin):
                 "fields": (
                     "deposit_amount",
                     "advance_amount",
+                    "discount_amount",
                     "payment_status",
                     "outfit_total",
+                    "net_total",
                     "balance_due",
                 )
             },
@@ -125,6 +128,10 @@ class RentalAdmin(admin.ModelAdmin):
     @admin.display(description="Outfit total")
     def outfit_total(self, obj):
         return f"₹{obj.total_amount:.2f}"
+
+    @admin.display(description="Total after discount")
+    def net_total(self, obj):
+        return f"₹{obj.net_amount:.2f}"
 
     @admin.display(description="Remaining due")
     def balance_due(self, obj):

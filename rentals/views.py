@@ -248,6 +248,7 @@ def complete_booking(request):
                 end_date=end,
                 deposit_amount=request.POST.get("deposit_amount") or 0,
                 advance_amount=request.POST.get("advance_amount") or 0,
+                discount_amount=request.POST.get("discount_amount") or 0,
                 payment_status=payment_status,
                 confirmed=request.POST.get("confirmed") == "on",
                 notes=request.POST.get("notes", ""),

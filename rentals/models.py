@@ -73,6 +73,7 @@ class Rental(models.Model):
 
     deposit_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     advance_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     payment_status = models.CharField(
         max_length=10,
         choices=PaymentStatus.choices,
@@ -109,8 +110,12 @@ class Rental(models.Model):
         )
 
     @property
+    def net_amount(self):
+        return max(Decimal("0"), self.total_amount - self.discount_amount)
+
+    @property
     def remaining_due(self):
-        return max(Decimal("0"), self.total_amount - self.advance_amount)
+        return max(Decimal("0"), self.net_amount - self.advance_amount)
 
     def __str__(self):
         return self.bill_number or f"Rental #{self.pk}"
