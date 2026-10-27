@@ -125,7 +125,8 @@
     <div class="box">
       <strong>Rental period</strong>
       <p>{{ rental.start_date|date:"d M Y, h:i A" }}</p>
-      <p>to {{ rental.end_date|date:"d M Y, h:i A" }}</p>
+      <p class="muted">to</p>
+      <p>{{ rental.end_date|date:"d M Y, h:i A" }}</p>
     </div>
   </div>
 
