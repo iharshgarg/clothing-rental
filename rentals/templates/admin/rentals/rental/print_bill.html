@@ -117,6 +117,9 @@
       <strong>Customer details</strong>
       <p>{{ rental.customer_name }}</p>
       <p>{{ rental.customer_phone }}</p>
+      {% if rental.additional_phone %}
+        <p>{{ rental.additional_phone }}</p>
+      {% endif %}
     </div>
 
     <div class="box">

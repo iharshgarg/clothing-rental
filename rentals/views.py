@@ -244,6 +244,7 @@ def complete_booking(request):
             rental = Rental.objects.create(
                 customer_name=customer_name,
                 customer_phone=customer_phone,
+                additional_phone=request.POST.get("additional_phone", "").strip(),
                 start_date=start,
                 end_date=end,
                 deposit_amount=request.POST.get("deposit_amount") or 0,

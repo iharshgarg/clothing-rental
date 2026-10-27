@@ -59,7 +59,7 @@ class RentalAdmin(admin.ModelAdmin):
         "balance_due",
     ]
     list_filter = ["confirmed", "payment_status", "created_at"]
-    search_fields = ["bill_number", "customer_name", "customer_phone"]
+    search_fields = ["bill_number", "customer_name", "customer_phone", "additional_phone"]
     inlines = [BookingInline]
 
     readonly_fields = [
@@ -89,6 +89,7 @@ class RentalAdmin(admin.ModelAdmin):
                 "fields": (
                     "customer_name",
                     "customer_phone",
+                    "additional_phone",
                 )
             },
         ),

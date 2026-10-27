@@ -66,6 +66,11 @@ class Rental(models.Model):
     )
     customer_name = models.CharField(max_length=100)
     customer_phone = models.CharField(max_length=20)
+    additional_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+    )
 
     # Temporarily nullable to preserve old test records during this refactor.
     start_date = models.DateTimeField(null=True, blank=True)
