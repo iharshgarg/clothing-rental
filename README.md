@@ -2,6 +2,7 @@
 
 Internal Django software for tracking rental outfits, staff bookings, payments, and printable rental bills.
 
+
 ## Main features
 
 - Category-based outfit catalogue
