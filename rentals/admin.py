@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.utils import timezone
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path
 
