@@ -1,0 +1,92 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <div style="margin-bottom: 24px;">
+    <a href="{% url 'admin:rentals_rental_changelist' %}">
+      ← Back to rentals
+    </a>
+  </div>
+
+  <h1>Revenue overview</h1>
+
+  <div style="
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    margin: 24px 0 36px;
+  ">
+    <div class="module" style="padding: 20px;">
+      <h2>This month</h2>
+      <p><strong>Total sales:</strong> ₹{{ current_month.sales|floatformat:2 }}</p>
+      <p><strong>Paid amount:</strong> ₹{{ current_month.paid|floatformat:2 }}</p>
+      <p><strong>Outstanding:</strong> ₹{{ current_month.outstanding|floatformat:2 }}</p>
+    </div>
+
+    <div class="module" style="padding: 20px;">
+      <h2>This year</h2>
+      <p><strong>Total sales:</strong> ₹{{ current_year.sales|floatformat:2 }}</p>
+      <p><strong>Paid amount:</strong> ₹{{ current_year.paid|floatformat:2 }}</p>
+      <p><strong>Outstanding:</strong> ₹{{ current_year.outstanding|floatformat:2 }}</p>
+    </div>
+  </div>
+
+  <div class="module">
+    <h2>Monthly revenue</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Total sales</th>
+          <th>Paid amount</th>
+          <th>Outstanding</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in monthly_data %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td>₹{{ row.sales|floatformat:2 }}</td>
+            <td>₹{{ row.paid|floatformat:2 }}</td>
+            <td>₹{{ row.outstanding|floatformat:2 }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4">No rental bills created yet.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="module" style="margin-top: 28px;">
+    <h2>Yearly revenue</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Total sales</th>
+          <th>Paid amount</th>
+          <th>Outstanding</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in yearly_data %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td>₹{{ row.sales|floatformat:2 }}</td>
+            <td>₹{{ row.paid|floatformat:2 }}</td>
+            <td>₹{{ row.outstanding|floatformat:2 }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4">No rental bills created yet.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
