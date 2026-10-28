@@ -1,0 +1,183 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <div style="margin-bottom: 24px;">
+    <a href="{% url 'admin:rentals_rental_changelist' %}">
+      ← Back to rentals
+    </a>
+  </div>
+
+  <h1>Upcoming pickups</h1>
+
+  <p style="margin-bottom: 28px;">
+    Use this page to prepare outfits before the customer arrives.
+  </p>
+
+  <div class="module" style="margin-bottom: 28px;">
+    <h2 style="padding: 12px 16px; margin: 0;">
+      Tomorrow — prepare today
+    </h2>
+
+    {% if tomorrow_pickups %}
+      <table>
+        <thead>
+          <tr>
+            <th>Pickup time</th>
+            <th>Bill</th>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Outfits</th>
+            <th>Preparation</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for rental in tomorrow_pickups %}
+            <tr>
+              <td>{{ rental.start_date|date:"d M Y, h:i A" }}</td>
+              <td>
+                <a href="{% url 'admin:rentals_rental_change' rental.pk %}">
+                  {{ rental.bill_number }}
+                </a>
+              </td>
+              <td>{{ rental.customer_name }}</td>
+              <td>
+                {{ rental.customer_phone }}
+                {% if rental.additional_phone %}
+                  <br>{{ rental.additional_phone }}
+                {% endif %}
+              </td>
+              <td>
+                {% for booking in rental.bookings.all %}
+                  {{ booking.outfit_size.outfit.model_code }}
+                  — Size {{ booking.outfit_size.size }}<br>
+                {% endfor %}
+              </td>
+              <td>
+                {% if rental.pickup_ready %}
+                  <strong style="color: #198754;">Ready</strong>
+                {% else %}
+                  <form method="post"
+                        action="{% url 'admin:rentals_mark_pickup_ready' rental.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="button">
+                      Mark ready
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="padding: 16px;">No pickups tomorrow.</p>
+    {% endif %}
+  </div>
+
+  <div class="module" style="margin-bottom: 28px;">
+    <h2 style="padding: 12px 16px; margin: 0;">Today's pickups</h2>
+
+    {% if today_pickups %}
+      <table>
+        <thead>
+          <tr>
+            <th>Pickup time</th>
+            <th>Bill</th>
+            <th>Customer</th>
+            <th>Outfits</th>
+            <th>Preparation</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for rental in today_pickups %}
+            <tr>
+              <td>{{ rental.start_date|date:"d M Y, h:i A" }}</td>
+              <td>
+                <a href="{% url 'admin:rentals_rental_change' rental.pk %}">
+                  {{ rental.bill_number }}
+                </a>
+              </td>
+              <td>{{ rental.customer_name }}</td>
+              <td>
+                {% for booking in rental.bookings.all %}
+                  {{ booking.outfit_size.outfit.model_code }}
+                  — Size {{ booking.outfit_size.size }}<br>
+                {% endfor %}
+              </td>
+              <td>
+                {% if rental.pickup_ready %}
+                  <strong style="color: #198754;">Ready</strong>
+                {% else %}
+                  <form method="post"
+                        action="{% url 'admin:rentals_mark_pickup_ready' rental.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="button">
+                      Mark ready
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="padding: 16px;">No pickups today.</p>
+    {% endif %}
+  </div>
+
+  <div class="module">
+    <h2 style="padding: 12px 16px; margin: 0;">Following seven days</h2>
+
+    {% if upcoming_pickups %}
+      <table>
+        <thead>
+          <tr>
+            <th>Pickup time</th>
+            <th>Bill</th>
+            <th>Customer</th>
+            <th>Outfits</th>
+            <th>Preparation</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for rental in upcoming_pickups %}
+            <tr>
+              <td>{{ rental.start_date|date:"d M Y, h:i A" }}</td>
+              <td>
+                <a href="{% url 'admin:rentals_rental_change' rental.pk %}">
+                  {{ rental.bill_number }}
+                </a>
+              </td>
+              <td>{{ rental.customer_name }}</td>
+              <td>
+                {% for booking in rental.bookings.all %}
+                  {{ booking.outfit_size.outfit.model_code }}
+                  — Size {{ booking.outfit_size.size }}<br>
+                {% endfor %}
+              </td>
+              <td>
+                {% if rental.pickup_ready %}
+                  <strong style="color: #198754;">Ready</strong>
+                {% else %}
+                  <form method="post"
+                        action="{% url 'admin:rentals_mark_pickup_ready' rental.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="button">
+                      Mark ready
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="padding: 16px;">No upcoming pickups in the next seven days.</p>
+    {% endif %}
+  </div>
+{% endblock %}

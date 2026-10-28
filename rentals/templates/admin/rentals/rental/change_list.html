@@ -2,6 +2,12 @@
 
 {% block object-tools-items %}
   <li>
+    <a href="{% url 'admin:rentals_upcoming_pickups' %}">
+      Upcoming pickups
+    </a>
+  </li>
+
+  <li>
     <a href="{% url 'admin:rentals_revenue_overview' %}">
       Revenue overview
     </a>

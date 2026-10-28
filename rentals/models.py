@@ -85,6 +85,7 @@ class Rental(models.Model):
         default=PaymentStatus.UNPAID,
     )
     confirmed = models.BooleanField(default=False)
+    pickup_ready = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(

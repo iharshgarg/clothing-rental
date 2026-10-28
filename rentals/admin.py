@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.utils import timezone
@@ -87,6 +87,7 @@ class RentalAdmin(admin.ModelAdmin):
         "customer_name",
         "customer_phone",
         "confirmed",
+        "pickup_ready",
         "payment_status",
         "created_at",
         "outfit_total",
@@ -133,6 +134,7 @@ class RentalAdmin(admin.ModelAdmin):
                 "fields": (
                     "start_date",
                     "end_date",
+                    "pickup_ready",
                 )
             },
         ),
@@ -175,6 +177,16 @@ class RentalAdmin(admin.ModelAdmin):
     def get_urls(self):
         custom_urls = [
             path(
+                "upcoming-pickups/",
+                self.admin_site.admin_view(self.upcoming_pickups),
+                name="rentals_upcoming_pickups",
+            ),
+            path(
+                "pickups/<int:rental_id>/mark-ready/",
+                self.admin_site.admin_view(self.mark_pickup_ready),
+                name="rentals_mark_pickup_ready",
+            ),
+            path(
                 "revenue/",
                 self.admin_site.admin_view(self.revenue_overview),
                 name="rentals_revenue_overview",
@@ -186,6 +198,63 @@ class RentalAdmin(admin.ModelAdmin):
             ),
         ]
         return custom_urls + super().get_urls()
+
+    def upcoming_pickups(self, request):
+        today = timezone.localdate()
+
+        today_start = timezone.make_aware(
+            datetime.combine(today, time.min)
+        )
+        tomorrow_start = today_start + timedelta(days=1)
+        day_after_tomorrow = tomorrow_start + timedelta(days=1)
+        future_end = day_after_tomorrow + timedelta(days=7)
+
+        base_queryset = Rental.objects.prefetch_related(
+            "bookings__outfit_size__outfit"
+        ).order_by("start_date")
+
+        today_pickups = base_queryset.filter(
+            start_date__gte=today_start,
+            start_date__lt=tomorrow_start,
+        )
+
+        tomorrow_pickups = base_queryset.filter(
+            start_date__gte=tomorrow_start,
+            start_date__lt=day_after_tomorrow,
+        )
+
+        upcoming_pickups = base_queryset.filter(
+            start_date__gte=day_after_tomorrow,
+            start_date__lt=future_end,
+        )
+
+        return TemplateResponse(
+            request,
+            "admin/rentals/upcoming_pickups.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": "Upcoming pickups",
+                "today_pickups": today_pickups,
+                "tomorrow_pickups": tomorrow_pickups,
+                "upcoming_pickups": upcoming_pickups,
+            },
+        )
+
+
+    def mark_pickup_ready(self, request, rental_id):
+        if request.method != "POST":
+            return redirect("admin:rentals_upcoming_pickups")
+
+        rental = get_object_or_404(Rental, pk=rental_id)
+        rental.pickup_ready = True
+        rental.save(update_fields=["pickup_ready"])
+
+        self.message_user(
+            request,
+            f"{rental.bill_number} marked ready for pickup.",
+        )
+
+        return redirect("admin:rentals_upcoming_pickups")
 
     def revenue_overview(self, request):
         if not request.user.is_superuser:
