@@ -1,66 +1,104 @@
 # Clothing Rental Manager
 
-Internal Django software for tracking rental outfits, staff bookings, payments, and printable rental bills.
+Internal Django software for managing clothing rentals, outfit availability, staff bookings, payments, printable bills, and upcoming pickup preparation.
+
+This is an internal company tool. Customers do not log in or book directly.
 
 ## Main features
 
-- Category-based outfit catalogue
-- Outfit photos stored in Cloudinary
-- Size-level inventory tracking
-- Date-and-time conflict prevention
-- One rental period shared across all outfits in a bill
+- Category-based visual outfit catalogue
+- Outfit photos stored permanently in Cloudinary
+- One outfit model can have multiple sizes
+- Size-level inventory and availability tracking
+- Date-and-time overlap prevention for each outfit size
+- One rental period shared by every outfit in a bill
 - Multiple outfits in one rental/bill
-- Deposit, advance, payment status, and remaining balance tracking
-- Admin-only billing records and printable bills
-- Staff access for catalogue and booking work
+- Customer primary and additional phone numbers
+- Deposit, advance, discount, payment status, and outstanding balance tracking
+- Admin-only billing details and printable bills
+- Revenue overview for monthly and yearly sales
+- Upcoming pickups board for preparing outfits before pickup
+- Mark pickup as ready
+- Staff catalogue and booking workflow
+- Admin account automatically created during Render deployment
 
 ## Project structure
 
 ```text
 clothing-rental/
 ├── config/
-│   ├── settings.py       # Django settings
-│   ├── urls.py           # Main URLs
-│   └── wsgi.py           # Production web-server entry point
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
 ├── rentals/
-│   ├── models.py         # Category, Outfit, Rental, Booking
-│   ├── views.py          # Catalogue and booking workflow
-│   ├── admin.py          # Admin billing and printable bill setup
-│   ├── urls.py           # Rental application URLs
-│   ├── templates/        # Catalogue, booking, admin, and bill templates
-│   └── management/
-│       └── commands/
-│           └── ensure_admin.py
-├── manage.py
-├── requirements.txt
-├── build.sh
+│   ├── migrations/
+│   ├── management/
+│   │   └── commands/
+│   │       └── ensure_admin.py
+│   ├── templates/
+│   │   ├── rentals/
+│   │   │   ├── base.html
+│   │   │   ├── cart.html
+│   │   │   ├── category_list.html
+│   │   │   ├── outfit_catalogue.html
+│   │   │   └── outfit_detail.html
+│   │   └── admin/
+│   │       └── rentals/
+│   │           ├── rental/
+│   │           │   ├── change_form.html
+│   │           │   ├── change_list.html
+│   │           │   └── print_bill.html
+│   │           ├── revenue_overview.html
+│   │           └── upcoming_pickups.html
+│   ├── admin.py
+│   ├── apps.py
+│   ├── models.py
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── .env
+├── .gitignore
 ├── .python-version
-└── .env                 # Private local secrets — never commit this file
+├── README.md
+├── build.sh
+├── manage.py
+└── requirements.txt
 ```
 
 ## Main data structure
 
 ```text
 Category
-  └─ Outfit
-       ├─ model code
-       ├─ size
-       ├─ rental price
-       └─ Cloudinary photo
+  └── Outfit
+       ├── model code
+       ├── rental price
+       ├── photo
+       └── Outfit sizes
+            ├── Size 38
+            ├── Size 40
+            ├── Size 42
+            └── Size 44
 
 Rental / Bill
-  ├─ bill number
-  ├─ customer information
-  ├─ one booking and return date/time
-  ├─ deposit and advance
-  ├─ payment status
-  └─ Booking items
-       ├─ Outfit 1
-       ├─ Outfit 2
-       └─ Outfit 3
+  ├── bill number
+  ├── customer name
+  ├── primary phone number
+  ├── additional phone number
+  ├── pickup date and time
+  ├── return date and time
+  ├── deposit amount
+  ├── advance amount
+  ├── discount amount
+  ├── payment status
+  ├── pickup ready status
+  └── Booking items
+       ├── Outfit model
+       ├── Selected size
+       └── Rental price
 ```
 
-A `Booking` does not separately store booking dates. It gets the rental period from its linked `Rental`, which avoids inconsistent dates across outfits in the same bill.
+A `Booking` belongs to a `Rental` bill. It does not keep separate pickup and return dates. Every booking uses the common rental period from its linked bill, preventing inconsistent dates across one bill.
 
 ## Local setup
 
@@ -79,7 +117,7 @@ pip install -r requirements.txt
 
 ### 3. Create `.env`
 
-Create a `.env` file beside `manage.py`:
+Create `.env` beside `manage.py`:
 
 ```env
 SECRET_KEY=your-django-secret-key
@@ -98,7 +136,9 @@ CLOUDINARY_URL=cloudinary://your-api-key:your-api-secret@your-cloud-name
 
 Never commit `.env` to GitHub.
 
-### 4. Create database tables
+### 4. Create migration files and database tables
+
+For a new local database:
 
 ```bash
 python manage.py makemigrations
@@ -117,26 +157,18 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Open:
+Catalogue: `http://127.0.0.1:8000/`
 
-```text
-http://127.0.0.1:8000/
-```
+Admin: `http://127.0.0.1:8000/admin/`
 
-Admin panel:
-
-```text
-http://127.0.0.1:8000/admin/
-```
-
-## Everyday commands
+## Everyday local commands
 
 ```bash
 source .venv/bin/activate
 python manage.py runserver
 ```
 
-Create migrations after changing models:
+After changing `models.py`:
 
 ```bash
 python manage.py makemigrations
@@ -152,14 +184,57 @@ python manage.py collectstatic --noinput
 
 ## User access
 
-- **Superuser/Admin:** Can view rental bills, payment information, balances, and printable bills.
-- **Staff user:** Can use the internal catalogue and create bookings. Staff status must be enabled for the account.
+### Superuser / Admin
+
+Admins can manage categories, outfits, sizes, and photos; view bills and payment information; print bills; view revenue; access upcoming pickups; mark pickups ready; and manage staff users.
+
+### Staff user
+
+Staff can use the internal catalogue, select rental dates, check size availability, add several outfits to a cart, and create bookings. Set `is_staff` for each staff account in Django Admin.
+
+## Booking workflow
+
+```text
+Choose rental dates and times
+        ↓
+Open category
+        ↓
+Choose outfit model
+        ↓
+Choose available size
+        ↓
+Add one or more outfits to cart
+        ↓
+Enter customer and payment details
+        ↓
+Create rental bill and booking items
+```
+
+The system blocks a specific outfit size when it already has an overlapping booking. A booking starting after another booking's return time is allowed.
+
+## Billing calculation
+
+```text
+Outfit total
+- Discount amount
+= Net rental amount
+
+Net rental amount
+- Advance amount
+= Remaining outstanding amount
+```
+
+Deposit is tracked separately because it may be refundable.
+
+## Upcoming pickups
+
+Django Admin includes an Upcoming Pickups page that shows pickups today, tomorrow, and in the following seven days. It includes customer details, selected outfits and sizes, and a **Mark ready** action after the required outfits have been prepared.
+
+This is intentionally a manual preparation board rather than an automatic notification system, keeping it simple and reliable on Render Free.
 
 ## Neon database
 
-Neon provides the PostgreSQL database.
-
-The connection details are stored as these environment variables:
+Neon provides the PostgreSQL database. Its connection details are supplied using:
 
 ```text
 PGHOST
@@ -169,29 +244,33 @@ PGPASSWORD
 PGPORT
 ```
 
-After creating a new Neon database, run:
+For a brand-new Neon database, Django migrations create the required tables:
 
 ```bash
 python manage.py migrate
 ```
 
-This creates all Django tables in Neon.
+Important:
+
+- Do not delete migration files after deployment.
+- Do not reset the production Neon database unless you intentionally want to remove all data.
+- Do not run migrations locally if your `.env` points to production Neon unless you intend to change the production database.
 
 ## Cloudinary images
 
-Cloudinary stores outfit photos permanently outside Render’s temporary filesystem.
+Cloudinary stores outfit photos permanently outside Render's temporary filesystem.
 
-The required environment variable is:
+Required environment variable:
 
 ```text
 CLOUDINARY_URL
 ```
 
-New photos uploaded through Django Admin are sent directly to Cloudinary.
+Photos uploaded through Django Admin are stored directly in Cloudinary.
 
 ## Render deployment
 
-Render uses:
+Render commands:
 
 ```text
 Build command: ./build.sh
@@ -239,12 +318,51 @@ DJANGO_SUPERUSER_EMAIL
 DJANGO_SUPERUSER_PASSWORD
 ```
 
-`ensure_admin` creates the first admin account during deployment, because Render Free does not provide Shell access. It does not overwrite the password on later deployments.
+Example:
+
+```text
+ALLOWED_HOSTS=clothing-rental.onrender.com
+CSRF_TRUSTED_ORIGINS=https://clothing-rental.onrender.com
+```
+
+## Automatic admin account
+
+`ensure_admin` runs on every Render deployment and creates the first admin user from:
+
+```text
+DJANGO_SUPERUSER_USERNAME
+DJANGO_SUPERUSER_EMAIL
+DJANGO_SUPERUSER_PASSWORD
+```
+
+It does not overwrite an existing admin user or reset its password. This avoids needing Render Shell access.
+
+## Deploying model changes
+
+When you change Django models:
+
+```bash
+python manage.py makemigrations
+```
+
+Commit and push the resulting migration file:
+
+```bash
+git add .
+git commit -m "Add rental feature"
+git push
+```
+
+Render redeploys automatically and runs `python manage.py migrate` through `build.sh`.
+
+Do not delete old migration files from Git after production deployment.
 
 ## Important notes
 
-- Render Free can sleep after inactivity, so the first request may take time.
-- Render does not store local uploads permanently. Always use Cloudinary for photos.
-- Neon and Cloudinary credentials must remain private.
-- Keep a regular backup/export of important rental data.
-- Do not delete existing migrations after deployment.
+- Render Free services can sleep after inactivity, so the first request may take time.
+- Render does not permanently store local uploads; use Cloudinary for photos.
+- Keep Neon, Cloudinary, Django secret keys, and admin passwords private.
+- Never commit `.env`.
+- Keep periodic backups of important rental and customer data.
+- Use strong passwords for admin accounts.
+- Take a Neon backup or branch before major database changes.
