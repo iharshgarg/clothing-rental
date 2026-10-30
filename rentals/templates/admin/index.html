@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <div id="content-main">
+    <div class="module">
+      <table>
+        <caption>
+          <a href="{% url 'admin:rentals_upcoming_pickups' %}" class="section">
+            Upcoming Pickups
+          </a>
+        </caption>
+        <tbody>
+          <tr class="model-rental">
+            <th scope="row">
+              <a href="{% url 'admin:rentals_upcoming_pickups' %}">
+                View upcoming pickups and prepare outfits
+              </a>
+            </th>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+  </div>
+{% endblock %}
