@@ -1,7 +1,13 @@
+from io import BytesIO
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
+from django.http import HttpResponse
 from django.utils import timezone
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
@@ -193,6 +199,11 @@ class RentalAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.print_bill),
                 name="rentals_rental_print",
             ),
+            path(
+                "export-excel/",
+                self.admin_site.admin_view(self.export_excel),
+                name="rentals_rental_export_excel",
+            ),
         ]
         return custom_urls + super().get_urls()
 
@@ -280,6 +291,267 @@ class RentalAdmin(admin.ModelAdmin):
                 "bookings": bookings,
             },
         )
+
+
+    def export_excel(self, request):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+
+        workbook = Workbook()
+
+        # -------------------------------------------------
+        # SHEET 1: BILLS
+        # -------------------------------------------------
+        bills_sheet = workbook.active
+        bills_sheet.title = "Bills"
+
+        bills_headers = [
+            "Bill Number",
+            "Created At",
+            "Created By",
+            "Customer Name",
+            "Phone",
+            "Additional Phone",
+            "Pickup Date",
+            "Return Date",
+            "Number of Outfits",
+            "Outfit Subtotal",
+            "Discount",
+            "Net Rental Amount",
+            "Refundable Deposit",
+            "Advance Received",
+            "Remaining Balance",
+            "Payment Status",
+            "Confirmed",
+            "Pickup Ready",
+            "Bill Notes",
+        ]
+
+        bills_sheet.append(bills_headers)
+
+        # -------------------------------------------------
+        # SHEET 2: OUTFIT DETAILS
+        # -------------------------------------------------
+        items_sheet = workbook.create_sheet("Outfit Details")
+
+        items_headers = [
+            "Bill Number",
+            "Customer Name",
+            "Customer Phone",
+            "Pickup Date",
+            "Return Date",
+            "Model Code",
+            "Category",
+            "Size",
+            "Rental Price",
+            "Booking Notes",
+        ]
+
+        items_sheet.append(items_headers)
+
+        # Get all rentals and their related records efficiently.
+        rentals = (
+            Rental.objects
+            .select_related("created_by")
+            .prefetch_related(
+                "bookings__outfit_size__outfit__category"
+            )
+            .order_by("created_at", "pk")
+        )
+
+        def excel_text(value):
+            """Prevent user-entered text from becoming an Excel formula."""
+            if value is None:
+                return ""
+
+            value = str(value)
+
+            if value.startswith(("=", "+", "-", "@", "\t", "\r")):
+                value = "'" + value
+
+            return value
+
+        def excel_datetime(value):
+            """Convert Django datetimes into Excel-compatible datetimes."""
+            if value is None:
+                return None
+
+            if timezone.is_aware(value):
+                value = timezone.localtime(value).replace(tzinfo=None)
+
+            return value
+
+        for rental in rentals:
+            bookings = list(rental.bookings.all())
+
+            outfit_total = sum(
+                (
+                    booking.outfit_size.outfit.rental_price
+                    for booking in bookings
+                    if booking.outfit_size_id
+                ),
+                Decimal("0"),
+            )
+
+            net_amount = max(
+                Decimal("0"),
+                outfit_total - rental.discount_amount,
+            )
+
+            remaining_balance = max(
+                Decimal("0"),
+                net_amount - rental.advance_amount,
+            )
+
+            created_by = (
+                rental.created_by.username
+                if rental.created_by
+                else ""
+            )
+
+            # Add one row for each bill.
+            bills_sheet.append([
+                excel_text(rental.bill_number),
+                excel_datetime(rental.created_at),
+                excel_text(created_by),
+                excel_text(rental.customer_name),
+                excel_text(rental.customer_phone),
+                excel_text(rental.additional_phone),
+                excel_datetime(rental.start_date),
+                excel_datetime(rental.end_date),
+                len(bookings),
+                float(outfit_total),
+                float(rental.discount_amount),
+                float(net_amount),
+                float(rental.deposit_amount),
+                float(rental.advance_amount),
+                float(remaining_balance),
+                rental.get_payment_status_display(),
+                "Yes" if rental.confirmed else "No",
+                "Yes" if rental.pickup_ready else "No",
+                excel_text(rental.notes),
+            ])
+
+            # Add one row for every outfit in the bill.
+            for booking in bookings:
+                if booking.outfit_size_id:
+                    outfit = booking.outfit_size.outfit
+
+                    model_code = outfit.model_code
+                    category = outfit.category.name
+                    size = booking.outfit_size.size
+                    rental_price = float(outfit.rental_price)
+                else:
+                    model_code = ""
+                    category = ""
+                    size = ""
+                    rental_price = 0
+
+                items_sheet.append([
+                    excel_text(rental.bill_number),
+                    excel_text(rental.customer_name),
+                    excel_text(rental.customer_phone),
+                    excel_datetime(rental.start_date),
+                    excel_datetime(rental.end_date),
+                    excel_text(model_code),
+                    excel_text(category),
+                    excel_text(size),
+                    rental_price,
+                    excel_text(booking.notes),
+                ])
+
+        # -------------------------------------------------
+        # FORMAT BOTH WORKSHEETS
+        # -------------------------------------------------
+        for sheet in workbook.worksheets:
+
+            # Header styling
+            for cell in sheet[1]:
+                cell.font = Font(
+                    bold=True,
+                    color="FFFFFF",
+                    size=11,
+                )
+                cell.fill = PatternFill(
+                    start_color="263B5E",
+                    end_color="263B5E",
+                    fill_type="solid",
+                )
+                cell.alignment = Alignment(
+                    horizontal="center",
+                    vertical="center",
+                )
+
+            sheet.row_dimensions[1].height = 30
+
+            # Freeze header row
+            sheet.freeze_panes = "A2"
+
+            # Enable filters
+            sheet.auto_filter.ref = sheet.dimensions
+
+            # Automatically adjust column widths
+            for column_cells in sheet.columns:
+                max_length = max(
+                    len(str(cell.value or ""))
+                    for cell in column_cells
+                )
+
+                column_letter = column_cells[0].column_letter
+
+                sheet.column_dimensions[column_letter].width = min(
+                    max(max_length + 3, 14),
+                    40,
+                )
+
+            # Format date and time columns
+            date_columns = (
+                ["B", "G", "H"]
+                if sheet.title == "Bills"
+                else ["D", "E"]
+            )
+
+            for column in date_columns:
+                for cell in sheet[column][1:]:
+                    cell.number_format = "dd mmm yyyy hh:mm AM/PM"
+
+            # Format monetary columns
+            money_columns = (
+                ["J", "K", "L", "M", "N", "O"]
+                if sheet.title == "Bills"
+                else ["I"]
+            )
+
+            for column in money_columns:
+                for cell in sheet[column][1:]:
+                    cell.number_format = '"₹"#,##0.00'
+
+        # -------------------------------------------------
+        # CREATE DOWNLOAD RESPONSE
+        # -------------------------------------------------
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        filename = (
+            f"rental_billing_export_"
+            f"{timezone.localdate():%Y%m%d}.xlsx"
+        )
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+        )
+
+        response["Content-Disposition"] = (
+            f'attachment; filename="{filename}"'
+        )
+
+        return response
+
 
     def has_module_permission(self, request):
         return request.user.is_superuser
