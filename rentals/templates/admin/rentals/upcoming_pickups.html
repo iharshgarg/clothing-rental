@@ -1,9 +1,10 @@
+
 {% extends "admin/base_site.html" %}
 
 {% block content %}
   <div style="margin-bottom: 24px;">
-    <a href="{% url 'admin:rentals_rental_changelist' %}">
-      ← Back to rentals
+    <a href="{% url 'admin:index' %}">
+      ← Back to Admin Dashboard
     </a>
   </div>
 
@@ -35,11 +36,7 @@
           {% for rental in tomorrow_pickups %}
             <tr>
               <td>{{ rental.start_date|date:"d M Y, h:i A" }}</td>
-              <td>
-                <a href="{% url 'admin:rentals_rental_change' rental.pk %}">
-                  {{ rental.bill_number }}
-                </a>
-              </td>
+              <td>{{ rental.bill_number }}</td>
               <td>{{ rental.customer_name }}</td>
               <td>
                 {{ rental.customer_phone }}
@@ -58,7 +55,7 @@
                   <strong style="color: #198754;">Ready</strong>
                 {% else %}
                   <form method="post"
-                        action="{% url 'admin:rentals_mark_pickup_ready' rental.pk %}">
+                        action="{% url 'admin:rentals_pickupmanagement_mark_pickup_ready' rental.pk %}">
                     {% csrf_token %}
                     <button type="submit" class="button">
                       Mark ready
@@ -94,11 +91,7 @@
           {% for rental in today_pickups %}
             <tr>
               <td>{{ rental.start_date|date:"d M Y, h:i A" }}</td>
-              <td>
-                <a href="{% url 'admin:rentals_rental_change' rental.pk %}">
-                  {{ rental.bill_number }}
-                </a>
-              </td>
+              <td>{{ rental.bill_number }}</td>
               <td>{{ rental.customer_name }}</td>
               <td>
                 {% for booking in rental.bookings.all %}
@@ -111,7 +104,7 @@
                   <strong style="color: #198754;">Ready</strong>
                 {% else %}
                   <form method="post"
-                        action="{% url 'admin:rentals_mark_pickup_ready' rental.pk %}">
+                        action="{% url 'admin:rentals_pickupmanagement_mark_pickup_ready' rental.pk %}">
                     {% csrf_token %}
                     <button type="submit" class="button">
                       Mark ready
@@ -147,11 +140,7 @@
           {% for rental in upcoming_pickups %}
             <tr>
               <td>{{ rental.start_date|date:"d M Y, h:i A" }}</td>
-              <td>
-                <a href="{% url 'admin:rentals_rental_change' rental.pk %}">
-                  {{ rental.bill_number }}
-                </a>
-              </td>
+              <td>{{ rental.bill_number }}</td>
               <td>{{ rental.customer_name }}</td>
               <td>
                 {% for booking in rental.bookings.all %}
@@ -164,7 +153,7 @@
                   <strong style="color: #198754;">Ready</strong>
                 {% else %}
                   <form method="post"
-                        action="{% url 'admin:rentals_mark_pickup_ready' rental.pk %}">
+                        action="{% url 'admin:rentals_pickupmanagement_mark_pickup_ready' rental.pk %}">
                     {% csrf_token %}
                     <button type="submit" class="button">
                       Mark ready

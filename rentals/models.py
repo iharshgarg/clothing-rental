@@ -169,3 +169,9 @@ class Booking(models.Model):
 
     def __str__(self):
         return str(self.outfit_size) if self.outfit_size else "No outfit size"
+
+class PickupManagement(Rental):
+    class Meta:
+        proxy = True
+        verbose_name = "Pickup Management"
+        verbose_name_plural = "Pickup Management"
